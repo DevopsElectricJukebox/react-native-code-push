@@ -12,6 +12,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 
+import javax.net.ssl.HttpsURLConnection;
+
 public class CodePushUpdateManager {
 
     private String mDocumentsDirectory;
@@ -152,7 +154,7 @@ public class CodePushUpdateManager {
         }
 
         String downloadUrlString = updatePackage.optString(CodePushConstants.DOWNLOAD_URL_KEY, null);
-        HttpURLConnection connection = null;
+        HttpsURLConnection connection = null;
         BufferedInputStream bin = null;
         FileOutputStream fos = null;
         BufferedOutputStream bout = null;
@@ -162,7 +164,16 @@ public class CodePushUpdateManager {
         // Download the file while checking if it is a zip and notifying client of progress.
         try {
             URL downloadUrl = new URL(downloadUrlString);
-            connection = (HttpURLConnection) (downloadUrl.openConnection());
+            connection = (HttpsURLConnection) (downloadUrl.openConnection());
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.LOLLIPOP) {
+                if (downloadUrl.toString().startsWith("https")) {
+                    try {
+                        connection.setSSLSocketFactory(new TLSSocketFactory());
+                    } catch (Exception e) {
+                        CodePushUtils.log(e.getMessage());
+                    }
+                }
+            }
             bin = new BufferedInputStream(connection.getInputStream());
 
             long totalBytes = connection.getContentLength();
@@ -331,13 +342,22 @@ public class CodePushUpdateManager {
 
     public void downloadAndReplaceCurrentBundle(String remoteBundleUrl, String bundleFileName) throws IOException {
         URL downloadUrl;
-        HttpURLConnection connection = null;
+        HttpsURLConnection connection = null;
         BufferedInputStream bin = null;
         FileOutputStream fos = null;
         BufferedOutputStream bout = null;
         try {
             downloadUrl = new URL(remoteBundleUrl);
-            connection = (HttpURLConnection) (downloadUrl.openConnection());
+            connection = (HttpsURLConnection) (downloadUrl.openConnection());
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.LOLLIPOP) {
+                if (downloadUrl.toString().startsWith("https")) {
+                    try {
+                        connection.setSSLSocketFactory(new TLSSocketFactory());
+                    } catch (Exception e) {
+                        CodePushUtils.log(e.getMessage());
+                    }
+                }
+            }
             bin = new BufferedInputStream(connection.getInputStream());
             File downloadFile = new File(getCurrentPackageBundlePath(bundleFileName));
             downloadFile.delete();
